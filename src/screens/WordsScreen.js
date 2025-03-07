@@ -7,39 +7,62 @@ import {
   SafeAreaView,
   RefreshControl,
   ScrollView,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-
-// Components
+import { useFocusEffect } from "@react-navigation/native";
 import WordCard from "../components/WordCard";
 import LevelSelector from "../components/LevelSelector";
-
-// Utilities
 import * as StorageUtils from "../utils/storage";
 
-function WordsScreen() {
+function WordsScreen({ navigation }) {
   const [words, setWords] = useState([]);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [level, setLevel] = useState("a1");
+  const [languageCode, setLanguageCode] = useState(null);
+  const [languageName, setLanguageName] = useState(null);
   const levels = ["a1", "a2", "b1", "b2", "c1"];
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
 
-  // Load words from API
+  useFocusEffect(
+    useCallback(() => {
+      const checkLanguage = async () => {
+        const langCode = await StorageUtils.getSelectedLanguageTwo();
+        const langName = await StorageUtils.getSelectedLanguageName();
+
+        setLanguageCode(langCode);
+        setLanguageName(langName);
+
+        if (!langCode) {
+          setLoading(false);
+        } else {
+          loadWords();
+        }
+      };
+
+      checkLanguage();
+    }, [])
+  );
+
   const loadWords = async () => {
+    if (!languageCode) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Get all processed words
       const processedWords = await StorageUtils.getAllProcessedWords();
-
-      // Fetch words from API
       const response = await fetch(
-        `https://raw.githubusercontent.com/mehmetmerthan/polingo-words/main/word-list/tr/tr-${level}.json`
+        `https://raw.githubusercontent.com/mehmetmerthan/polingo-words/main/word-list/${languageCode}/${languageCode}-${level}.json`
       );
-      const data = await response.json();
 
-      // Filter out already processed words
+      if (!response.ok) {
+        throw new Error(`Failed to fetch words. Status: ${response.status}`);
+      }
+      const data = await response.json();
       const filteredWords = data.filter(
         (word) => !processedWords.some((pw) => pw.term === word.term)
       );
@@ -48,19 +71,22 @@ function WordsScreen() {
       setCurrentWordIndex(0);
     } catch (error) {
       console.error("Error loading words:", error);
+      if (error.message.includes("Failed to fetch")) {
+        Alert.alert(
+          "Error",
+          `Could not load words for ${languageName} (${languageCode}) at level ${level.toUpperCase()}. Please try another language or level.`
+        );
+      }
     } finally {
       setLoading(false);
     }
   };
-
-  // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadWords();
     setRefreshing(false);
-  }, [level]);
+  }, [level, languageCode]);
 
-  // Change level
   const changeLevel = (direction) => {
     let newIndex = currentLevelIndex;
 
@@ -74,7 +100,6 @@ function WordsScreen() {
     setLevel(levels[newIndex]);
   };
 
-  // Handle word actions
   const handleWordAction = async (action) => {
     if (words.length === 0 || currentWordIndex >= words.length) return;
 
@@ -83,18 +108,14 @@ function WordsScreen() {
 
     try {
       if (action === "known") {
-        // Add to known words
         await StorageUtils.addKnownWord(currentWord);
       } else if (action === "toLearn") {
-        // Add to words to learn
         await StorageUtils.addToLearnWord(currentWord);
       }
 
-      // Move to next word
       if (currentWordIndex < words.length - 1) {
         setCurrentWordIndex(currentWordIndex + 1);
       } else {
-        // If no more words, reload the list
         loadWords();
       }
     } catch (error) {
@@ -102,12 +123,12 @@ function WordsScreen() {
     }
   };
 
-  // Load words on mount and when level changes
   useEffect(() => {
-    loadWords();
-  }, [level]);
+    if (languageCode) {
+      loadWords();
+    }
+  }, [level, languageCode]);
 
-  // Get current word or status
   const getCurrentWord = () => {
     if (words.length === 0) {
       return null;
@@ -120,53 +141,78 @@ function WordsScreen() {
     return words[currentWordIndex];
   };
 
+  const goToSettings = () => {
+    navigation.navigate("Settings");
+  };
+
+  const renderNoLanguageMessage = () => (
+    <View style={styles.noLanguageContainer}>
+      <Ionicons name="language-outline" size={60} color="#aaa" />
+      <Text style={styles.noLanguageText}>
+        Please select a language from the settings.
+      </Text>
+      <TouchableOpacity style={styles.settingsButton} onPress={goToSettings}>
+        <Text style={styles.settingsButtonText}>Go to Settings</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <LevelSelector level={level} onChangeLevel={changeLevel} />
+      {languageCode ? (
+        <>
+          <LevelSelector level={level} onChangeLevel={changeLevel} />
+          <Text style={styles.title}>Oxford's 5000 Words</Text>
+          <Text style={styles.counter}>
+            {words.length > 0
+              ? `${currentWordIndex + 1}/${
+                  words.length
+                } words left • ${languageName}`
+              : `0/0 words left • ${languageName}`}
+          </Text>
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#007AFF"]}
+              />
+            }
+          >
+            <View style={styles.cardContainer}>
+              <WordCard
+                word={getCurrentWord()}
+                loading={loading && !refreshing}
+                isEmpty={words.length === 0}
+                isComplete={
+                  currentWordIndex >= words.length && words.length > 0
+                }
+              />
+            </View>
+          </ScrollView>
 
-      <Text style={styles.counter}>
-        {words.length > 0
-          ? `${currentWordIndex + 1}/${words.length} words left`
-          : "0/0 words left"}
-      </Text>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.tickButton]}
+              onPress={() => handleWordAction("known")}
+              disabled={words.length === 0 || currentWordIndex >= words.length}
+            >
+              <Ionicons name="checkmark" size={32} color="white" />
+            </TouchableOpacity>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#646cff"]}
-          />
-        }
-      >
-        <View style={styles.cardContainer}>
-          <WordCard
-            word={getCurrentWord()}
-            loading={loading && !refreshing}
-            isEmpty={words.length === 0}
-            isComplete={currentWordIndex >= words.length && words.length > 0}
-          />
-        </View>
-      </ScrollView>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.tickButton]}
-          onPress={() => handleWordAction("known")}
-          disabled={words.length === 0 || currentWordIndex >= words.length}
-        >
-          <Ionicons name="checkmark" size={32} color="white" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.crossButton]}
-          onPress={() => handleWordAction("toLearn")}
-          disabled={words.length === 0 || currentWordIndex >= words.length}
-        >
-          <Ionicons name="close" size={32} color="white" />
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.crossButton]}
+              onPress={() => handleWordAction("toLearn")}
+              disabled={words.length === 0 || currentWordIndex >= words.length}
+            >
+              <Ionicons name="close" size={32} color="white" />
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : (
+        !loading && renderNoLanguageMessage()
+      )}
     </SafeAreaView>
   );
 }
@@ -175,6 +221,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+  },
+  title: {
+    textAlign: "center",
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    margin: 10,
   },
   counter: {
     textAlign: "center",
@@ -213,6 +266,30 @@ const styles = StyleSheet.create({
   },
   crossButton: {
     backgroundColor: "#F44336",
+  },
+  noLanguageContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 30,
+  },
+  noLanguageText: {
+    fontSize: 18,
+    color: "#555",
+    textAlign: "center",
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  settingsButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  settingsButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

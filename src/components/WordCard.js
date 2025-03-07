@@ -36,6 +36,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 10,
     padding: 20,
+    paddingVertical: 80,
     elevation: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -44,13 +45,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   termText: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: "bold",
     marginBottom: 10,
     color: "#333",
   },
   meaningText: {
-    fontSize: 20,
+    fontSize: 30,
     color: "#666",
   },
   emptyText: {

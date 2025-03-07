@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,12 +6,66 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  ScrollView,
+  Button,
 } from "react-native";
-
-// Utilities
+import LanguageSelector from "../components/LanguageSelector";
 import * as StorageUtils from "../utils/storage";
 
-function SettingsScreen() {
+function SettingsScreen({ navigation }) {
+  const [selectedLanguage, setSelectedLanguage] = useState(null);
+
+  useEffect(() => {
+    const loadLanguage = async () => {
+      const langName = await StorageUtils.getSelectedLanguageName();
+      setSelectedLanguage(langName);
+    };
+
+    loadLanguage();
+  }, []);
+
+  const handleLanguageSelect = async (code, name) => {
+    Alert.alert(
+      "Change Language",
+      `Are you sure you want to change the language to ${name}? This will clear your current word progress.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Change",
+          onPress: async () => {
+            try {
+              // Clear all data except language settings
+              await StorageUtils.clearAllData(true);
+
+              // Save new language selection
+              await StorageUtils.saveLanguageSelection(code, name);
+
+              // Update state
+              setSelectedLanguage(name);
+
+              Alert.alert(
+                "Language Changed",
+                `Language changed to ${name}. Your word progress has been reset.`,
+                [
+                  {
+                    text: "OK",
+                    onPress: () => navigation.navigate("Words"),
+                  },
+                ]
+              );
+            } catch (error) {
+              console.error("Error changing language:", error);
+              Alert.alert("Error", "Failed to change language.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const clearAllData = async () => {
     Alert.alert(
       "Clear All Data",
@@ -25,8 +79,9 @@ function SettingsScreen() {
           text: "Clear",
           onPress: async () => {
             try {
-              await StorageUtils.clearAllData();
-              Alert.alert("Success", "All data has been cleared.");
+              // Keep language settings when clearing data
+              await StorageUtils.clearAllData(true);
+              Alert.alert("Success", "All word progress has been cleared.");
             } catch (error) {
               console.error("Error clearing data:", error);
               Alert.alert("Error", "Failed to clear data.");
@@ -37,22 +92,41 @@ function SettingsScreen() {
       ]
     );
   };
-
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.settingsSection}>
-        <Text style={styles.settingsHeader}>App Settings</Text>
+      <ScrollView>
+        <View style={styles.settingsSection}>
+          <Text style={styles.settingsHeader}>Language Settings</Text>
 
-        <View style={styles.settingsItem}>
-          <Text style={styles.settingsLabel}>Clear All Data</Text>
-          <Text style={styles.settingsDescription}>
-            Reset all your progress by clearing all saved words.
-          </Text>
-          <TouchableOpacity style={styles.clearButton} onPress={clearAllData}>
-            <Text style={styles.clearButtonText}>Clear All Data</Text>
-          </TouchableOpacity>
+          <View style={styles.settingsItem}>
+            <Text style={styles.settingsLabel}>Learning Language</Text>
+            <Text style={styles.settingsDescription}>
+              Select the language you want to learn. Changing the language will
+              reset your progress.
+            </Text>
+            <View style={styles.selectorContainer}>
+              <LanguageSelector
+                selectedLanguage={selectedLanguage}
+                onSelectLanguage={handleLanguageSelect}
+              />
+            </View>
+          </View>
         </View>
-      </View>
+
+        <View style={styles.settingsSection}>
+          <Text style={styles.settingsHeader}>Data Management</Text>
+
+          <View style={styles.settingsItem}>
+            <Text style={styles.settingsLabel}>Clear All Data</Text>
+            <Text style={styles.settingsDescription}>
+              Reset all your progress by clearing all saved words.
+            </Text>
+            <TouchableOpacity style={styles.clearButton} onPress={clearAllData}>
+              <Text style={styles.clearButtonText}>Clear All Data</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -67,6 +141,7 @@ const styles = StyleSheet.create({
     margin: 10,
     borderRadius: 10,
     overflow: "hidden",
+    marginBottom: 20,
   },
   settingsHeader: {
     fontSize: 20,
@@ -90,6 +165,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     marginBottom: 15,
+  },
+  selectorContainer: {
+    marginBottom: 10,
   },
   clearButton: {
     backgroundColor: "#F44336",

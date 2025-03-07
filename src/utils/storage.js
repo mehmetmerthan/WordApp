@@ -5,6 +5,104 @@ export const STORAGE_KEYS = {
   KNOWN_WORDS: "knownWords",
   TO_LEARN_WORDS: "toLearnWords",
   PROCESSING_WORDS: "processingWords",
+  SELECTED_LANGUAGE_TWO: "selectedLanguageTwo",
+  SELECTED_LANGUAGE_THREE: "selectedLanguageThree",
+  SELECTED_LANGUAGE_NAME: "selectedLanguageName",
+};
+
+// Language code mappings
+export const languageList = {
+  "zh-CN": "Chinese",
+  hi: "Hindi",
+  es: "Spanish",
+  pt: "Portuguese",
+  id: "Indonesian",
+  ja: "Japanese",
+  bn: "Bengali",
+  ru: "Russian",
+  de: "German",
+  fr: "French",
+  it: "Italian",
+  ar: "Arabic",
+  ko: "Korean",
+  vi: "Vietnamese",
+  tr: "Turkish",
+};
+
+export const langCodeMapThree = {
+  Chinese: "chi",
+  Hindi: "hin",
+  Spanish: "spa",
+  Portuguese: "por",
+  Indonesian: "ind",
+  Japanese: "jpn",
+  Bengali: "ben",
+  Russian: "rus",
+  German: "ger",
+  French: "fre",
+  Italian: "ita",
+  Arabic: "ara",
+  Korean: "kor",
+  Vietnamese: "vie",
+  Turkish: "tur",
+};
+
+export const getSelectedLanguageTwo = async () => {
+  try {
+    const langCode = await AsyncStorage.getItem(
+      STORAGE_KEYS.SELECTED_LANGUAGE_TWO
+    );
+    return langCode;
+  } catch (error) {
+    console.error("Error getting selected language code:", error);
+    return null;
+  }
+};
+
+export const getSelectedLanguageThree = async () => {
+  try {
+    const langCode = await AsyncStorage.getItem(
+      STORAGE_KEYS.SELECTED_LANGUAGE_THREE
+    );
+    return langCode;
+  } catch (error) {
+    console.error("Error getting selected language code:", error);
+    return null;
+  }
+};
+
+export const getSelectedLanguageName = async () => {
+  try {
+    const langName = await AsyncStorage.getItem(
+      STORAGE_KEYS.SELECTED_LANGUAGE_NAME
+    );
+    return langName;
+  } catch (error) {
+    console.error("Error getting selected language name:", error);
+    return null;
+  }
+};
+
+export const saveLanguageSelection = async (twoLetterCode, languageName) => {
+  try {
+    const threeLetterCode = langCodeMapThree[languageName];
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.SELECTED_LANGUAGE_TWO,
+      twoLetterCode
+    );
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.SELECTED_LANGUAGE_THREE,
+      threeLetterCode
+    );
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.SELECTED_LANGUAGE_NAME,
+      languageName
+    );
+    return true;
+  } catch (error) {
+    console.error("Error saving language selection:", error);
+    return false;
+  }
 };
 
 /**
@@ -199,16 +297,52 @@ export const deleteFromProcessing = async (word) => {
 };
 
 /**
- * Clear all data from storage
+ * Clear all data from storage (preserves language selection if keepLanguage is true)
+ * @param {boolean} keepLanguage Whether to keep the language selection
  * @returns {Promise<void>}
  */
-export const clearAllData = async () => {
+export const clearAllData = async (keepLanguage = false) => {
   try {
-    await Promise.all([
-      AsyncStorage.removeItem(STORAGE_KEYS.KNOWN_WORDS),
-      AsyncStorage.removeItem(STORAGE_KEYS.TO_LEARN_WORDS),
-      AsyncStorage.removeItem(STORAGE_KEYS.PROCESSING_WORDS),
-    ]);
+    // Store language codes if needed
+    let langCodeTwo = null;
+    let langCodeThree = null;
+    let langName = null;
+
+    if (keepLanguage) {
+      langCodeTwo = await getSelectedLanguageTwo();
+      langCodeThree = await getSelectedLanguageThree();
+      langName = await getSelectedLanguageName();
+    }
+
+    // Clear all data
+    const keys = [
+      STORAGE_KEYS.KNOWN_WORDS,
+      STORAGE_KEYS.TO_LEARN_WORDS,
+      STORAGE_KEYS.PROCESSING_WORDS,
+    ];
+
+    if (!keepLanguage) {
+      keys.push(
+        STORAGE_KEYS.SELECTED_LANGUAGE_TWO,
+        STORAGE_KEYS.SELECTED_LANGUAGE_THREE,
+        STORAGE_KEYS.SELECTED_LANGUAGE_NAME
+      );
+    }
+
+    await Promise.all(keys.map((key) => AsyncStorage.removeItem(key)));
+
+    // Restore language selection if needed
+    if (keepLanguage && langCodeTwo && langCodeThree && langName) {
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.SELECTED_LANGUAGE_TWO,
+        langCodeTwo
+      );
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.SELECTED_LANGUAGE_THREE,
+        langCodeThree
+      );
+      await AsyncStorage.setItem(STORAGE_KEYS.SELECTED_LANGUAGE_NAME, langName);
+    }
   } catch (error) {
     console.error("Error clearing all data:", error);
     throw error;

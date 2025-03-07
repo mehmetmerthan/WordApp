@@ -13,12 +13,12 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Button, Icon } from "@rneui/themed";
-// Components
 import FilterChips from "../components/FilterChips";
-
-// Utilities
 import * as StorageUtils from "../utils/storage";
-
+import GlishModal from "../components/GlishModal";
+import WordDetailModal from "../components/WordDetailModal";
+import * as Speech from "expo-speech";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 function DictionaryScreen() {
   const [toLearnWords, setToLearnWords] = useState([]);
   const [processingWords, setProcessingWords] = useState([]);
@@ -30,6 +30,8 @@ function DictionaryScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalGlishVisible, setModalGlishVisible] = useState(false);
   const levels = ["a1", "a2", "b1", "b2", "c1"];
+  const [langCodeThree, setLangCodeThree] = useState("");
+  const [currentWord, setCurrentWord] = useState("");
 
   // Load dictionary words
   const loadDictionary = async () => {
@@ -121,7 +123,28 @@ function DictionaryScreen() {
   useEffect(() => {
     loadDictionary();
   }, []);
-
+  async function playSound(text) {
+    if (text === "" || loading) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    Speech.speak(text);
+    setLoading(false);
+  }
+  const openGlish = () => {
+    setModalGlishVisible(true);
+  };
+  const openInfo = async (word) => {
+    const langCodeThree = await AsyncStorage.getItem("selectedLanguageThree");
+    if (!langCodeThree) {
+      alert("Please select a language from settings.");
+      return;
+    }
+    setCurrentWord(word);
+    setLangCodeThree(langCodeThree);
+    setModalVisible(true);
+  };
   // Render dictionary item
   const renderItem = ({ item }) => (
     <View style={styles.dictionaryItem}>
@@ -164,7 +187,7 @@ function DictionaryScreen() {
               color={"#646cff"}
             />
           }
-          //onPress={() => playSound(item.term)}
+          onPress={() => playSound(item.term)}
           disabled={loading}
         />
         <Button
@@ -177,7 +200,7 @@ function DictionaryScreen() {
               color={"#646cff"}
             />
           }
-          //onPress={openInfo}
+          onPress={() => openInfo(item.term)}
         />
         <Button
           type="clear"
@@ -189,14 +212,14 @@ function DictionaryScreen() {
               size={32}
             />
           }
-          //onPress={openGlish}
+          onPress={openGlish}
         />
       </View>
       {modalVisible && (
         <WordDetailModal
           visible={modalVisible}
           setVisible={setModalVisible}
-          word={item.term}
+          word={currentWord}
           translateTo={langCodeThree}
         />
       )}
