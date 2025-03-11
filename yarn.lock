@@ -5790,6 +5790,7 @@ wonka@^6.3.2:
     "@rneui/themed" "^4.0.0-rc.8"
     expo "~52.0.37"
     expo-file-system "~18.0.11"
+    expo-speech "~13.0.1"
     expo-sqlite "~15.1.2"
     expo-status-bar "~2.0.1"
     react "18.3.1"
@@ -5799,7 +5800,8 @@ wonka@^6.3.2:
     react-native-safe-area-context "4.12.0"
     react-native-screens "~4.4.0"
     react-native-vector-icons "^10.2.0"
-    wordapp "file:../../Users/mehme/AppData/Local/Yarn/Cache/v6/npm-wordapp-1.0.0-bde613b9-0d22-42b0-abcd-3421601e82cc-1741350978222/node_modules/wordapp"
+    react-native-webview "13.12.5"
+    wordapp "file:../../Users/mehme/AppData/Local/Yarn/Cache/v6/npm-wordapp-1.0.0-1c3f2592-77da-4adf-bf0f-456f1832def1-1741690811654/node_modules/wordapp"
 
 "wrap-ansi-cjs@npm:wrap-ansi@^7.0.0":
   version "7.0.0"

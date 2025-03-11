@@ -1,7 +1,15 @@
-import React from "react";
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+} from "react-native";
 
 const WordCard = ({ word, loading, isEmpty, isComplete }) => {
+  const [isBlurred, setIsBlurred] = useState(true);
+
   if (loading) {
     return <ActivityIndicator size="large" color="#646cff" />;
   }
@@ -25,7 +33,11 @@ const WordCard = ({ word, loading, isEmpty, isComplete }) => {
   return (
     <View style={styles.card}>
       <Text style={styles.termText}>{word.term}</Text>
-      <Text style={styles.meaningText}>{word.meaning}</Text>
+      <TouchableOpacity onPress={() => setIsBlurred(!isBlurred)}>
+        <Text style={[styles.meaningText, isBlurred && styles.blurredText]}>
+          {isBlurred ? "******" : word.meaning}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -47,12 +59,16 @@ const styles = StyleSheet.create({
   termText: {
     fontSize: 32,
     fontWeight: "bold",
-    marginBottom: 10,
+    marginBottom: 40,
     color: "#333",
   },
   meaningText: {
     fontSize: 30,
     color: "#666",
+  },
+  blurredText: {
+    color: "#666",
+    letterSpacing: 5, // Optional: Space out the asterisks
   },
   emptyText: {
     fontSize: 16,
